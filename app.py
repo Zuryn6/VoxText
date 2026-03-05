@@ -26,13 +26,33 @@ language = st.sidebar.selectbox(
     help="Forcing the language can improve accuracy and reduce 'hallucination' errors."
 )
 
+st.sidebar.divider()
+st.sidebar.subheader("🎚️ Audio Filters")
+
+# Slider for Noise Reduction
+prop_decrease = st.sidebar.slider(
+    "Noise Reduction Intensity", 
+    min_value=0.0, 
+    max_value=1.0, 
+    value=0.45, 
+    step=0.05,
+    help="Higher values remove more noise but may distort the voice. 0.4-0.6 is ideal for lectures."
+)
+
+# Slider for Beam Size
+beam_size = st.sidebar.slider(
+    "Transcription Complexity (Beam Size)", 
+    min_value=1, 
+    max_value=10, 
+    value=5,
+    help="Higher values increase accuracy on difficult audio but make transcription slower."
+)
+
 initial_prompt = st.sidebar.text_area(
     "Topic or Keywords:",
     placeholder="E.g.: Calculus 2 Lecture, partial derivatives, surface integral, Gauss theorem...",
     help="Entering technical terms helps the AI recognize them correctly even if the audio is muffled."
 )
-
-apply_denoise = st.sidebar.checkbox("Apply Noise Reduction", value=True)
 
 @st.cache_resource
 def load_model(model_name: str):
@@ -40,14 +60,12 @@ def load_model(model_name: str):
 
 model = load_model(model_name)
 
-def preprocess_audio(input_path):
-    # Upload audio
+def preprocess_audio(input_path, noise_val):
     data, sr = librosa.load(input_path, sr=16000)
     
-    # Noise Reduction 
-    if apply_denoise:
-        # Spectral noise reduction (moderate to preserve distant voices)
-        data = nr.reduce_noise(y=data, sr=sr, prop_decrease=0.45)
+    # Apply Noise Reduction based on slider
+    if noise_val > 0:
+        data = nr.reduce_noise(y=data, sr=sr, prop_decrease=noise_val)
     
     # High-pass filter
     data = librosa.effects.preemphasis(data)
@@ -55,7 +73,7 @@ def preprocess_audio(input_path):
     # Normalization
     data = librosa.util.normalize(data)
     
-    clean_path = "cleaned_audio.wav"
+    clean_path = "temp_cleaned.wav"
     sf.write(clean_path, data, sr)
     return data, sr, clean_path
 
@@ -82,10 +100,10 @@ if audio_file is not None:
     with open("temp_raw.mp3", "wb") as f:
         f.write(audio_file.getbuffer())
     
-    # 2. AUTOMATIC PRE-PROCESSING & VISUALIZATION
+    # 2. INTERACTIVE PRE-PROCESSING & VISUALIZATION
     with st.spinner("Analyzing and cleaning audio..."):
         raw_data, sr = librosa.load("temp_raw.mp3", sr=16000)
-        clean_data, _, clean_path = preprocess_audio("temp_raw.mp3")
+        clean_data, _, clean_path = preprocess_audio("temp_raw.mp3", prop_decrease)
         
         st.divider()
         st.subheader("📊 Audio Signal Analysis")
@@ -114,7 +132,7 @@ if audio_file is not None:
             result = model.transcribe(
                 clean_path, 
                 language=lang_param, 
-                beam_size=5, 
+                beam_size=beam_size, 
                 initial_prompt=initial_prompt,
                 condition_on_previous_text=True
             )
