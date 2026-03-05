@@ -6,3 +6,4 @@ noisereduce
 librosa 
 soundfile 
 numpy
+matplotlib
