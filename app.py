@@ -34,17 +34,18 @@ def load_model(model_name: str):
 model = load_model(model_name)
 
 def preprocess_audio(input_path):
-    # Upload audio 
+    # Upload audio
     data, sr = librosa.load(input_path, sr=16000)
     
-    if apply_denoise:
-        # Noise reduction
-        data = nr.reduce_noise(y=data, sr=sr, prop_decrease=0.75)
+    # Noise Reduction 
+    data = nr.reduce_noise(y=data, sr=sr, prop_decrease=0.5)
+    
+    # High-pass filter
+    data = librosa.effects.preemphasis(data)
     
     # Normalization
     data = librosa.util.normalize(data)
     
-    # Save cleaned audio
     clean_path = "cleaned_audio.wav"
     sf.write(clean_path, data, sr)
     return clean_path
@@ -66,7 +67,7 @@ if audio_file is not None:
             
             # Transcribe audio
             lang_param = None if language == "auto" else language
-            result = model.transcribe(clean_audio_path, language=lang_param)
+            result = model.transcribe(clean_audio_path, language=lang_param, beam_size=5)
             
             # Result
             st.success("Transcription completed!")
