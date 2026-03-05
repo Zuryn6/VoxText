@@ -8,10 +8,16 @@ st.title("🎙️ VoxText")
 st.markdown("Upload an audio file and let AI do the dirty work.")
 
 @st.cache_resource
-def load_model():
-    return whisper.load_model("medium")
+def load_model(model_name: str):
+    return whisper.load_model(model_name)
 
-model = load_model()
+model_name = st.selectbox(
+    "Scegli il modello Whisper",
+    ["tiny", "base", "small", "medium", "large"],
+    index=1,
+)
+
+model = load_model(model_name)
 
 # Upload File
 audio_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a", "ogg"])
